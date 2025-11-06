@@ -1,4 +1,5 @@
 import os
+import subprocess
 from config import CHARACTER_LIMIT
 
 def get_file_info(working_directory, directory="."):
@@ -51,6 +52,26 @@ def write_file(working_directory, file_path, content):
             return f'Successfully wrote to "{file_path}" ({len(content)} characters written)'
     except (FileNotFoundError, PermissionError, OSError) as e :
         return f"Error: {e}"
+    
+def run_python_file(working_directory, file_path, args=[]):
+    output = ""
+    abs_wd, abs_td = get_abs_path(working_directory, file_path)
+    if not os.path.commonpath([abs_wd, abs_td]) == abs_wd:
+        return f'Error: Cannot execute "{file_path}" as it is outside the permitted working directory'
+    elif not os.path.isfile(abs_td):
+        return f'Error: File "{file_path}" not found'
+    elif not file_path.endswith(".py"):
+        return f'Error: "{file_path}" is not a Python file.'
+    try:
+        result = subprocess.run(["uv", "run", f"{abs_td}"] + args, capture_output=True, timeout=0.3, text=True)
+        output += f"STDOUT: {result.stdout}\nSTDERR:{result.stderr}\n"
+        if result.returncode != 0:
+            output += f"Process exited with code {result.returncode}"
+        return output
+    except (FileNotFoundError, PermissionError, OSError) as e:
+        return f"Error: executing Python file: {e}"
+
+
 
 
 def get_abs_path(working_directory, file_path):
