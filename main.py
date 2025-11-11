@@ -48,21 +48,21 @@ def main():
             raise Exception("no function responses generated, exiting")
         messages.append(types.Content(role="user", parts=function_responses))
 
-    def call_function(function_call_part, verbose=False):
-        if verbose:
-            print(
-                f" - Calling function: {function_call_part.name}({function_call_part.args})"
-            )
-        else:
-            print(f" - Calling function: {function_call_part.name}")
-        function_map = {
+    def call_function(function_call, verbose=False):
+        available_functions = {
             "get_files_info": get_files_info,
             "get_file_content": get_file_content,
-            "run_python_file": run_python_file,
             "write_file": write_file,
+            "run_python_file": run_python_file,
         }
-        function_name = function_call_part.name
-        if function_name not in function_map:
+        function_name = function_call.name
+        if verbose:
+            print(f"Calling function: {function_name}({function_call.args})")
+        else:
+            print(f" - Calling function: {function_name}")
+        args = dict(function_call.args)
+        args["working_directory"] = "./calculator"
+        if function_name not in available_functions:
             return types.Content(
                 role="tool",
                 parts=[
@@ -72,18 +72,17 @@ def main():
                     )
                 ],
             )
-        args = dict(function_call_part.args)
-        args["working_directory"] = "./calculator"
-        function_result = function_map[function_name](**args)
+        fn = available_functions.get(function_name)
+        result = fn(**args)
         return types.Content(
             role="tool",
             parts=[
                 types.Part.from_function_response(
                     name=function_name,
-                    response={"result": function_result},
+                    response={"result": result},
                 )
             ],
-        )
+        )        
     system_prompt = """
 You are a helpful AI agent designed to help the user write code within their codebase.
 
